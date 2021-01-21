@@ -3,7 +3,7 @@
     GM1000HPS GM2000QCI GM2000HPS GM3000HPS GM4000QCI GM4000HPS AZ2000
     Mount Command Protocol 2.14.11
 
-    Copyright (C) 2017-2020 Hans Lambermont
+    Copyright (C) 2017-2021 Hans Lambermont
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -37,31 +37,39 @@
 #include <math.h>
 #include <libnova.h>
 
-#define PRODUCT_TAB   "Product"
-#define ALIGNMENT_TAB "Alignment"
-#define LX200_TIMEOUT 5 /* FD timeout in seconds */
+const int LX200_TIMEOUT = 5; // FD timeout in seconds
+
+// Other tab names live in defaultdevice.h
+const char *PRODUCT_TAB   = "Product";
 
 // INDI Number and Text names
-#define REFRACTION_MODEL_TEMPERATURE "REFRACTION_MODEL_TEMPERATURE"
-#define REFRACTION_MODEL_PRESSURE "REFRACTION_MODEL_PRESSURE"
-#define MODEL_COUNT "MODEL_COUNT"
-#define ALIGNMENT_POINTS "ALIGNMENT_POINTS"
-#define ALIGNMENT_STATE "Alignment"
-#define MINIMAL_NEW_ALIGNMENT_POINT_RO "MINIMAL_NEW_ALIGNMENT_POINT_RO"
-#define MINIMAL_NEW_ALIGNMENT_POINT "MINIMAL_NEW_ALIGNMENT_POINT"
-#define NEW_ALIGNMENT_POINT "NEW_ALIGNMENT_POINT"
-#define NEW_ALIGNMENT_POINTS "NEW_ALIGNMENT_POINTS"
-#define NEW_MODEL_NAME "NEW_MODEL_NAME"
-#define PRODUCT_INFO "PRODUCT_INFO"
-#define TLE_TEXT "TLE_TEXT"
-#define TLE_NUMBER "TLE_NUMBER"
-#define TRAJECTORY_TIME "TRAJECTORY_TIME"
-#define SAT_TRACKING_STAT "SAT_TRACKING_STAT"
-#define UNATTENDED_FLIP "UNATTENDED_FLIP"
+const char *REFRACTION_MODEL_TEMPERATURE   = "REFRACTION_MODEL_TEMPERATURE";
+const char *REFRACTION_MODEL_PRESSURE      = "REFRACTION_MODEL_PRESSURE";
+const char *MODEL_COUNT                    = "MODEL_COUNT";
+const char *ALIGNMENT_POINTS               = "ALIGNMENT_POINTS";
+const char *ALIGNMENT_STATE                = "Alignment";
+const char *MINIMAL_NEW_ALIGNMENT_POINT_RO = "MINIMAL_NEW_ALIGNMENT_POINT_RO";
+const char *MINIMAL_NEW_ALIGNMENT_POINT    = "MINIMAL_NEW_ALIGNMENT_POINT";
+const char *NEW_ALIGNMENT_POINT            = "NEW_ALIGNMENT_POINT";
+const char *NEW_ALIGNMENT_POINTS           = "NEW_ALIGNMENT_POINTS";
+const char *NEW_MODEL_NAME                 = "NEW_MODEL_NAME";
+const char *PRODUCT_INFO                   = "PRODUCT_INFO";
+const char *TLE_TEXT                       = "TLE_TEXT";
+const char *TLE_NUMBER                     = "TLE_NUMBER";
+const char *TRAJECTORY_TIME                = "TRAJECTORY_TIME";
+const char *SAT_TRACKING_STAT              = "SAT_TRACKING_STAT";
+const char *UNATTENDED_FLIP                = "UNATTENDED_FLIP";
+const char *MERIDIAN_LIMITS                = "MERIDIAN_LIMITS";
+const char *TIME_TO_HORIZON_OR_FLIP_LIMIT  = "TIME_TO_HORIZON_OR_FLIP_LIMIT";
+const char *DO_A_FLIP                      = "DO_A_FLIP";
 
 LX200_10MICRON::LX200_10MICRON() : LX200Generic()
 {
-    setLX200Capability( LX200_HAS_TRACKING_FREQ | LX200_HAS_PULSE_GUIDING );
+    setLX200Capability(
+        LX200_HAS_TRACKING_FREQ |
+        LX200_HAS_PULSE_GUIDING |
+        0
+    );
 
     SetTelescopeCapability(
         TELESCOPE_CAN_GOTO |
@@ -74,10 +82,11 @@ LX200_10MICRON::LX200_10MICRON() : LX200Generic()
         TELESCOPE_HAS_TRACK_MODE |
         TELESCOPE_CAN_CONTROL_TRACK |
         TELESCOPE_HAS_TRACK_RATE |
-        TELESCOPE_CAN_TRACK_SATELLITE
+        TELESCOPE_CAN_TRACK_SATELLITE |
+        0
     );
 
-    setVersion(1, 0);
+    setVersion(1, 1);
 }
 
 // Called by INDI::DefaultDevice::ISGetProperties
@@ -126,6 +135,18 @@ bool LX200_10MICRON::initProperties()
         IUFillSwitch(&UnattendedFlipS[UNATTENDED_FLIP_ENABLED], "Enabled", "Enabled", ISS_OFF);
         IUFillSwitchVector(&UnattendedFlipSP, UnattendedFlipS, UNATTENDED_FLIP_COUNT, getDeviceName(),
                            UNATTENDED_FLIP, "Unattended Flip", MOTION_TAB, IP_RW, ISR_1OFMANY, 60, IPS_IDLE);
+
+        IUFillNumber(&MeridianLimitsN[MERIDIAN_TRACKING_LIMIT_IN_DEGREES], "MERIDIAN_TRACKING_LIMIT_IN_DEGREES",
+                     "tracking (dd)", "%.0f", 0, 99, 0, 0);
+        IUFillNumber(&MeridianLimitsN[MERIDIAN_SLEW_LIMIT_IN_DEGREES], "MERIDIAN_SLEW_LIMIT_IN_DEGREES",
+                     "slew (dd)", "%.0f", 0, 99, 0, 0);
+        IUFillNumberVector(&MeridianLimitsNP, MeridianLimitsN, MERIDIAN_LIMITS_COUNT, getDeviceName(),
+                           MERIDIAN_LIMITS, "Meridian Limits", MOTION_TAB, IP_RW, 60, IPS_IDLE);
+
+        IUFillSwitch(&DoFlipS[FLIP_FROM_EAST_TO_WEST], "FLIP_FROM_EAST_TO_WEST", "East to West (pointing west to east)", ISS_OFF);
+        IUFillSwitch(&DoFlipS[FLIP_FROM_WEST_TO_EAST], "FLIP_FROM_WEST_TO_EAST", "West to East (pointing east to west)", ISS_OFF);
+        IUFillSwitchVector(&DoFlipSP, DoFlipS, FLIPS_COUNT, getDeviceName(),
+                           DO_A_FLIP, "Meridian Flip", MOTION_TAB, IP_RW, ISR_ATMOST1, 60, IPS_IDLE);
 
         IUFillNumber(&RefractionModelTemperatureN[0], "TEMPERATURE", "Celsius", "%+6.1f", -999.9, 999.9, 0, 0.);
         IUFillNumberVector(&RefractionModelTemperatureNP, RefractionModelTemperatureN, 1, getDeviceName(),
@@ -181,7 +202,7 @@ bool LX200_10MICRON::initProperties()
 
         IUFillNumber(&TLEfromDatabaseN[0], "NUMBER", "#", "%.0f", 1, 999, 1, 1);
         IUFillNumberVector(&TLEfromDatabaseNP, TLEfromDatabaseN, 1, getDeviceName(),
-                           "TLE_NUMBER", "Database TLE ", SATELLITE_TAB, IP_RW, 60, IPS_IDLE);
+                           TLE_NUMBER, "Database TLE ", SATELLITE_TAB, IP_RW, 60, IPS_IDLE);
     }
     return result;
 }
@@ -201,6 +222,8 @@ bool LX200_10MICRON::updateProperties()
     if (isConnected())
     {
         defineSwitch(&UnattendedFlipSP);
+        defineNumber(&MeridianLimitsNP);
+        defineSwitch(&DoFlipSP);
         // getMountInfo defines ProductTP
         defineNumber(&RefractionModelTemperatureNP);
         defineNumber(&RefractionModelPressureNP);
@@ -243,6 +266,8 @@ bool LX200_10MICRON::updateProperties()
     else
     {
         deleteProperty(UnattendedFlipSP.name);
+        deleteProperty(MeridianLimitsNP.name);
+        deleteProperty(DoFlipSP.name);
         deleteProperty(ProductTP.name);
         deleteProperty(RefractionModelTemperatureNP.name);
         deleteProperty(RefractionModelPressureNP.name);

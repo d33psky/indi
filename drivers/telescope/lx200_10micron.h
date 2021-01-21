@@ -33,6 +33,20 @@ class LX200_10MICRON : public LX200Generic
             UNATTENDED_FLIP_COUNT
         };
 
+        enum LX200_10MICRON_MERIDIAN_LIMITS
+        {
+            MERIDIAN_TRACKING_LIMIT_IN_DEGREES,
+            MERIDIAN_SLEW_LIMIT_IN_DEGREES,
+            MERIDIAN_LIMITS_COUNT
+        };
+
+        enum LX200_10MICRON_DO_FLIPS
+        {
+            FLIP_FROM_EAST_TO_WEST,
+            FLIP_FROM_WEST_TO_EAST,
+            FLIPS_COUNT
+        };
+
         enum LX200_10MICRON_PRODUCT_INFO
         {
             PRODUCT_NAME,
@@ -137,6 +151,15 @@ class LX200_10MICRON : public LX200Generic
         int UnattendedFlip = -1;
         ISwitch UnattendedFlipS[UNATTENDED_FLIP_COUNT];
         ISwitchVectorProperty UnattendedFlipSP;
+
+        INumber MeridianLimitsN[MERIDIAN_LIMITS_COUNT];
+        INumberVectorProperty MeridianLimitsNP;
+
+        INumber TimeToHorizonOrFlipLimitN[1];
+        INumberVectorProperty TimeToHorizonOrFlipLimitNP;
+
+        ISwitch DoFlipS[FLIPS_COUNT];
+        ISwitchVectorProperty DoFlipSP;
 
         IText ProductT[4] {};
         ITextVectorProperty ProductTP;
