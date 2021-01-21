@@ -221,21 +221,21 @@ bool LX200_10MICRON::updateProperties()
 
     if (isConnected())
     {
-        defineSwitch(&UnattendedFlipSP);
-        defineNumber(&MeridianLimitsNP);
-        defineSwitch(&DoFlipSP);
+        defineProperty(&UnattendedFlipSP);
+        defineProperty(&MeridianLimitsNP);
+        defineProperty(&DoFlipSP);
         // getMountInfo defines ProductTP
-        defineNumber(&RefractionModelTemperatureNP);
-        defineNumber(&RefractionModelPressureNP);
-        defineNumber(&ModelCountNP);
-        defineNumber(&AlignmentPointsNP);
-        defineSwitch(&AlignmentSP);
-        defineNumber(&MiniNewAlpRONP);
-        defineNumber(&MiniNewAlpNP);
-        defineNumber(&NewAlpNP);
-        defineNumber(&NewAlignmentPointsNP);
-        defineText(&NewModelNameTP);
-        defineNumber(&TLEfromDatabaseNP);
+        defineProperty(&RefractionModelTemperatureNP);
+        defineProperty(&RefractionModelPressureNP);
+        defineProperty(&ModelCountNP);
+        defineProperty(&AlignmentPointsNP);
+        defineProperty(&AlignmentSP);
+        defineProperty(&MiniNewAlpRONP);
+        defineProperty(&MiniNewAlpNP);
+        defineProperty(&NewAlpNP);
+        defineProperty(&NewAlignmentPointsNP);
+        defineProperty(&NewModelNameTP);
+        defineProperty(&TLEfromDatabaseNP);
 
         // read UnAttendedFlip setting from config and apply if available
         int readit = 0;
@@ -401,7 +401,7 @@ bool LX200_10MICRON::getMountInfo()
     IUFillTextVector(&ProductTP, ProductT, PRODUCT_COUNT, getDeviceName(),
                      PRODUCT_INFO, "Product", PRODUCT_TAB, IP_RO, 60, IPS_IDLE);
 
-    defineText(&ProductTP);
+    defineProperty(&ProductTP);
 
     return true;
 }
